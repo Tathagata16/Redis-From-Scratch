@@ -1,0 +1,1 @@
+This is a small redis clone. Building everything from scratch.
