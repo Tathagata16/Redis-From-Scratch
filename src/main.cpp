@@ -49,13 +49,24 @@ int main()
         return 1;
     }
 
-    std::cout<< "Listening for connections...\n";
+    std::cout<<"Waiting for a clinent...\n";
 
-    std::cout<< "Press enter to exit...\n";
-    std::cin.get();
+    sockaddr_in clientAddress{};
+    socklen_t clientLength = sizeof(clientAddress);
+
+    int clientSocket = accept(serverSocket, reinterpret_cast<sockaddr*>(&clientAddress),&clientLength);
+
+    if(clientSocket == -1){
+        std::cerr << "Accept failed.\n";
+        close(serverSocket);
+        return 1;
+    }
+
+    std::cout << "Client connected!\n";
 
 
     //close before exit
+    close(clientSocket);
     close(serverSocket);
 
     return 0;
