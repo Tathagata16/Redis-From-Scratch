@@ -42,6 +42,18 @@ int main()
 
     std::cout<<"Socket bound to port 6379 successfully.\n";
 
+    //step 4: Listen: 
+    if(listen(serverSocket, 5) == -1){
+        std::cerr<< "Listen failed.\n";
+        close(serverSocket);
+        return 1;
+    }
+
+    std::cout<< "Listening for connections...\n";
+
+    std::cout<< "Press enter to exit...\n";
+    std::cin.get();
+
 
     //close before exit
     close(serverSocket);
