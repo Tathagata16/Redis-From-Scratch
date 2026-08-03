@@ -3,11 +3,14 @@
 
 #include <string>
 #include "parser.h"
+#include "database.h"
 
 class CommandProcessor
 {
 public:
     std::string process(const ParsedCommand& command);
+private:
+    Database database;
 };
 
 #endif
