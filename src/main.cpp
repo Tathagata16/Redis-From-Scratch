@@ -64,6 +64,26 @@ int main()
 
     std::cout << "Client connected!\n";
 
+    //receive data
+
+    char buffer[1024];
+
+    std::memset(buffer, 0, sizeof(buffer));
+
+    ssize_t bytesReceived = recv(
+        clientSocket,
+        buffer,
+        sizeof(buffer) - 1,
+        0
+    );
+
+    if(bytesReceived == -1){
+        std::cerr<<"Receive failed.\n";
+    }else{
+        std::cout<<"\nReceived "<<bytesReceived<<" bytes\n";
+        std::cout<<"Message : "<<buffer <<"\n";
+    }
+
 
     //close before exit
     close(clientSocket);
