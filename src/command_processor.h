@@ -2,11 +2,12 @@
 #define COMMAND_PROCESSOR_H
 
 #include <string>
+#include "parser.h"
 
 class CommandProcessor
 {
 public:
-    std::string process(const std::string& command);
+    std::string process(const ParsedCommand& command);
 };
 
 #endif

@@ -1,8 +1,8 @@
 #include "command_processor.h"
 
-std::string CommandProcessor::process(const std::string& command)
+std::string CommandProcessor::process(const ParsedCommand& cmd)
 {
-    if (command == "PING\r\n" || command == "PING\n")
+    if (cmd.command == "PING")
     {
         return "+PONG\r\n";
     }

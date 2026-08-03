@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstring>
 
+#include "parser.h"
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -85,7 +87,18 @@ void Server::handleClient(int clientSocket){
 
         std::cout << "Received: "<<buffer<<"\n";
 
-        std::string command(buffer);
+        Parser parser;
+
+        std::string input(buffer);
+
+        ParsedCommand command = parser.parse(input);
+        std::cout<< "\nCommand: "<<command.command <<"\n";
+
+        std::cout<<"Arguments:\n";
+
+        for(const auto& arg:command.arguments){
+            std::cout<< " " << arg << "\n";
+        }
 
         std::string response = processor.process(command);
 

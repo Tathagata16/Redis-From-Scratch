@@ -8,5 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(myredis
     src/main.cpp
     src/server.cpp
+    src/parser.cpp
     src/command_processor.cpp
 )
