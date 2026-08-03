@@ -81,7 +81,21 @@ int main()
         std::cerr<<"Receive failed.\n";
     }else{
         std::cout<<"\nReceived "<<bytesReceived<<" bytes\n";
-        std::cout<<"Message : "<<buffer <<"\n";
+        const char* response = "Message received successfully!\n";
+
+
+        ssize_t bytesSent = send(
+            clientSocket,
+            response,
+            strlen(response),
+            0
+        );
+
+        if(bytesSent == -1){
+            std::cerr<<"Send failed.\n";
+        }else{
+            std::cout<<"Sent"<<bytesSent<<" bytes back to client.\n";
+        }
     }
 
 
