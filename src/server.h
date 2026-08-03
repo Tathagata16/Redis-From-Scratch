@@ -2,6 +2,7 @@
 #define SERVER_H
 
 #include "command_processor.h"
+#include "database.h"
 
 class Server
 {
@@ -13,6 +14,8 @@ public:
 
 private:
     int serverSocket;
+
+    Database database;
 
     CommandProcessor processor;
 

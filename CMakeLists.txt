@@ -9,5 +9,6 @@ add_executable(myredis
     src/main.cpp
     src/server.cpp
     src/parser.cpp
+    src/database.cpp
     src/command_processor.cpp
 )

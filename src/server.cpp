@@ -10,10 +10,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-Server::Server()
-{
-    serverSocket = -1;
-}
+Server::Server(): serverSocket(-1), processor(&database){}
+
 
 Server::~Server()
 {

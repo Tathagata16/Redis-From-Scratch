@@ -1,5 +1,7 @@
 #include "command_processor.h"
 
+CommandProcessor::CommandProcessor(Database* db):database(db){}
+
 std::string CommandProcessor::process(const ParsedCommand& cmd)
 {
     if (cmd.command == "PING")
@@ -14,7 +16,7 @@ std::string CommandProcessor::process(const ParsedCommand& cmd)
             return "-ERR wrong number of arguments\r\n";
         }
 
-        database.set(cmd.arguments[0], cmd.arguments[1]);
+        database->set(cmd.arguments[0], cmd.arguments[1]);
 
         return "+OK\r\n";
     }
@@ -28,7 +30,7 @@ std::string CommandProcessor::process(const ParsedCommand& cmd)
 
         std::string value;
 
-        if(!database.get(cmd.arguments[0], value))
+        if(!database->get(cmd.arguments[0], value))
         {
             return "(nil)\r\n";
         }
