@@ -1,6 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "command_processor.h"
+
 class Server
 {
 public:
@@ -11,6 +13,8 @@ public:
 
 private:
     int serverSocket;
+
+    CommandProcessor processor;
 
     bool createSocket();
     bool bindSocket();

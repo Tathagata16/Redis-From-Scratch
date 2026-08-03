@@ -85,10 +85,12 @@ void Server::handleClient(int clientSocket){
 
         std::cout << "Received: "<<buffer<<"\n";
 
-        const char* response = "OK\n";
+        std::string command(buffer);
 
-        if(send(clientSocket, response, strlen(response), 0)== -1){
-            std::cerr<<"Send failed.\n";
+        std::string response = processor.process(command);
+
+        if(send(clientSocket,response.c_str(), response.length(), 0)==-1){
+            std::cerr<< "Send failed.\n";
             break;
         }
     }
