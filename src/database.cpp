@@ -16,3 +16,14 @@ bool Database::get(const std::string& key, std::string& value)const
     value = it->second;
     return true;
 }
+
+bool Database::remove(const std::string& key)
+{
+    return storage.erase(key) > 0;
+}
+
+bool Database::exists(const std::string& key)const
+{
+    return storage.find(key) != storage.end();
+}
+

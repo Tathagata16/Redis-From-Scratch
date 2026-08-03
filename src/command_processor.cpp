@@ -38,5 +38,34 @@ std::string CommandProcessor::process(const ParsedCommand& cmd)
         return value + "(nil)\r\n";
     }
 
+    //del command
+    if(cmd.command == "DEL")
+    {
+        if(cmd.arguments.size() != 1){
+            return "-ERR wrong number of arguments\r\n";
+        }
+
+        if(database->remove(cmd.arguments[0])){
+            return ":1\r\n";
+        }
+
+        return ":0\r\n";
+    }
+
+    if(cmd.command == "EXISTS")
+    {
+        if(cmd.arguments.size() != 1)
+        {
+            return "-ERR wrong number of arguments\r\n";
+        }
+
+        if(database->exists(cmd.arguments[0]))
+        {
+            return ":1\r\n";
+        }
+
+        return ":0\r\n";
+    }
+
     return "-ERR unknown command\r\n";
 }
