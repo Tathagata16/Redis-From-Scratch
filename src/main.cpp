@@ -49,58 +49,75 @@ int main()
         return 1;
     }
 
-    std::cout<<"Waiting for a clinent...\n";
+    std::cout<< "Server is listening on port 6379...\n";
 
-    sockaddr_in clientAddress{};
-    socklen_t clientLength = sizeof(clientAddress);
+    //--------------outer loop------------------
 
-    int clientSocket = accept(serverSocket, reinterpret_cast<sockaddr*>(&clientAddress),&clientLength);
+    while (true){
+        std::cout<<"Waiting for a clinent...\n";
+    
+        sockaddr_in clientAddress{};
+        socklen_t clientLength = sizeof(clientAddress);
+    
+        int clientSocket = accept(serverSocket, reinterpret_cast<sockaddr*>(&clientAddress),&clientLength);
+    
+        if(clientSocket == -1){
+            std::cerr << "Accept failed.\n";
+            close(serverSocket);
+            return 1;
+        }
+    
+        std::cout << "Client connected!\n";
+    
+        //receive data
 
-    if(clientSocket == -1){
-        std::cerr << "Accept failed.\n";
-        close(serverSocket);
-        return 1;
-    }
-
-    std::cout << "Client connected!\n";
-
-    //receive data
-
-    char buffer[1024];
-
-    std::memset(buffer, 0, sizeof(buffer));
-
-    ssize_t bytesReceived = recv(
-        clientSocket,
-        buffer,
-        sizeof(buffer) - 1,
-        0
-    );
-
-    if(bytesReceived == -1){
-        std::cerr<<"Receive failed.\n";
-    }else{
-        std::cout<<"\nReceived "<<bytesReceived<<" bytes\n";
-        const char* response = "Message received successfully!\n";
-
-
-        ssize_t bytesSent = send(
+        //-----------------Inner Loop-----------------
+        while(true)
+        {
+            char buffer[1024]{};
+    
+        // std::memset(buffer, 0, sizeof(buffer));
+    
+        ssize_t bytesReceived = recv(
             clientSocket,
-            response,
-            strlen(response),
+            buffer,
+            sizeof(buffer) - 1,
             0
         );
-
-        if(bytesSent == -1){
-            std::cerr<<"Send failed.\n";
-        }else{
-            std::cout<<"Sent"<<bytesSent<<" bytes back to client.\n";
+        
+        if(bytesReceived == 0){
+            std::cout<<"Client disconnected.\n";
+            break;
         }
+        if(bytesReceived < 0){
+            std::cerr<<"Receive failed.\n";
+            break;
+        }
+            std::cout<<"\nReceived "<<bytesReceived<<" bytes\n";
+            std::cout<< "Message: "<<buffer<< "\n";
+            const char* response = "OK\n";
+    
+    
+            ssize_t bytesSent = send(
+                clientSocket,
+                response,
+                strlen(response),
+                0
+            );
+
+            if(bytesSent == -1){
+                std::cerr << "Send failed.\n";
+                break;
+            }
+    
+            
+    }
+    
+        //close before exit
+        close(clientSocket);
+     
     }
 
-
-    //close before exit
-    close(clientSocket);
     close(serverSocket);
 
     return 0;
