@@ -67,5 +67,22 @@ std::string CommandProcessor::process(const ParsedCommand& cmd)
         return ":0\r\n";
     }
 
+    if (cmd.command == "EXPIRE")
+    {
+        if (cmd.arguments.size() != 2)
+        {
+            return "-ERR wrong number of arguments\r\n";
+        }
+
+        int seconds = std::stoi(cmd.arguments[1]);
+
+        if (database->expire(cmd.arguments[0], seconds))
+        {
+            return ":1\r\n";
+        }
+
+        return ":0\r\n";
+    }
+
     return "-ERR unknown command\r\n";
 }
