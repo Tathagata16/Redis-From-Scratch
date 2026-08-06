@@ -3,6 +3,7 @@
 
 #include "command_processor.h"
 #include "database.h"
+#include "client.h"
 
 class Server
 {
@@ -24,7 +25,7 @@ private:
     bool listenForConnections();
 
     void acceptClients();
-    void handleClient(int clientSocket);
+    void handleClient(Client& client);
 };
 
 #endif

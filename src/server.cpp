@@ -67,11 +67,11 @@ bool Server::listenForConnections(){
 }
 
 
-void Server::handleClient(int clientSocket){
+void Server::handleClient(Client& client){
     while(true){
-        char buffer[1024]{};
+        char tempBuffer[1024]{};
 
-        ssize_t bytesReceived = recv(clientSocket, buffer, sizeof(buffer)-1, 0);
+        ssize_t bytesReceived = recv(client.getSocket(), tempBuffer, sizeof(tempBuffer)-1, 0);
 
         if(bytesReceived == 0){
             std::cout<<"Client disconnected.\n";
@@ -83,11 +83,15 @@ void Server::handleClient(int clientSocket){
             break;
         }
 
-        std::cout << "Received: "<<buffer<<"\n";
+        client.inputBuffer().append(tempBuffer, bytesReceived);
+
+        std::cout << "Received: "
+                << client.inputBuffer()
+                << "\n";
 
         Parser parser;
 
-        std::string input(buffer);
+        std::string input = client.inputBuffer();
 
         ParsedCommand command = parser.parse(input);
         std::cout<< "\nCommand: "<<command.command <<"\n";
@@ -100,12 +104,14 @@ void Server::handleClient(int clientSocket){
 
         std::string response = processor.process(command);
 
-        if(send(clientSocket,response.c_str(), response.length(), 0)==-1){
+        if(send(client.getSocket(),response.c_str(), response.length(), 0)==-1){
             std::cerr<< "Send failed.\n";
             break;
         }
+
+        client.inputBuffer().clear();
     }
-    close(clientSocket);
+    close(client.getSocket());
 }
 
 
@@ -116,17 +122,20 @@ void Server::acceptClients(){
         sockaddr_in clientAddress{};
         socklen_t clientLength = sizeof(clientAddress);
 
-        int clientSocket = 
-            accept(serverSocket, reinterpret_cast<sockaddr*>(&clientAddress),
-        &clientLength);
+        int clientSocket = accept(
+            serverSocket,
+            reinterpret_cast<sockaddr*>(&clientAddress),
+            &clientLength);
 
-        if(clientSocket == -1){
-            std::cerr << "Accept failed\n";
+        if (clientSocket == -1)
+        {
+            std::cerr << "Accept failed.\n";
             continue;
         }
 
-        std::cout << "Client connected.\n";
-        handleClient(clientSocket);
+        Client client(clientSocket);
+
+        handleClient(client);
     }
 }
 
