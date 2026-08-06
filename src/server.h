@@ -30,7 +30,7 @@ private:
     bool listenForConnections();
     bool setNonBlocking(int socket);
     bool createEpoll();
-    bool acceptNewClient();
+    void acceptNewClient();
 
     void acceptClients();
     void handleClient(Client& client);

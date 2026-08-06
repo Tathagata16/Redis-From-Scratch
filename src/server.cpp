@@ -46,35 +46,7 @@ bool Server::createSocket()
 }
 
 //function to create epoll instance
-bool Server::createEpoll()
-{
-    epollFd = epoll_create1(0);
 
-    if (epollFd == -1)
-    {
-        std::cerr << "Failed to create epoll instance.\n";
-        return false;
-    }
-
-    epoll_event event{};
-
-    event.events = EPOLLIN;
-    event.data.fd = serverSocket;
-
-    if (epoll_ctl(
-            epollFd,
-            EPOLL_CTL_ADD,
-            serverSocket,
-            &event) == -1)
-    {
-        std::cerr << "Failed to register server socket.\n";
-        return false;
-    }
-
-    return true;
-
-    return true;
-}
 
 bool Server::bindSocket()
 {
@@ -157,25 +129,43 @@ bool Server::createEpoll()
 
 
 void Server::handleClient(Client& client){
-    while(true){
         char tempBuffer[1024]{};
 
         ssize_t bytesReceived = recv(client.getSocket(), tempBuffer, sizeof(tempBuffer)-1, 0);
 
-        if(bytesReceived == 0){
-            std::cout<<"Client disconnected.\n";
-            break;
+        if (bytesReceived == 0)
+        {
+            std::cout << "Client disconnected.\n";
+
+            epoll_ctl(
+                epollFd,
+                EPOLL_CTL_DEL,
+                client.getSocket(),
+                nullptr);
+
+            clients.erase(client.getSocket());
+
+            close(client.getSocket());
+
+            return;
         }
 
         if (bytesReceived < 0)
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                continue;
-            }
 
             std::cerr << "Receive failed.\n";
-            break;
+
+            epoll_ctl(
+                epollFd,
+                EPOLL_CTL_DEL,
+                client.getSocket(),
+                nullptr);
+
+            clients.erase(client.getSocket());
+
+            close(client.getSocket());
+
+            return;
         }
 
         client.inputBuffer().append(tempBuffer, bytesReceived);
@@ -200,48 +190,76 @@ void Server::handleClient(Client& client){
         std::string response = processor.process(command);
 
         if(send(client.getSocket(),response.c_str(), response.length(), 0)==-1){
-            std::cerr<< "Send failed.\n";
-            break;
+            std::cerr << "Send failed.\n";
+
+            epoll_ctl(
+                epollFd,
+                EPOLL_CTL_DEL,
+                client.getSocket(),
+                nullptr);
+
+            clients.erase(client.getSocket());
+
+            close(client.getSocket());
+
+            return;
         }
 
         client.inputBuffer().clear();
-    }
-    close(client.getSocket());
+    
 }
 
 void Server::acceptNewClient()
 {
-    sockaddr_in clientAddress{};
-    socklen_t clientLength = sizeof(clientAddress);
-
-    int clientSocket =
-        accept(serverSocket,
-               reinterpret_cast<sockaddr*>(&clientAddress),
-               &clientLength);
-
-    if (clientSocket == -1)
+    while (true)
     {
-        return;
+        
+        sockaddr_in clientAddress{};
+        socklen_t clientLength = sizeof(clientAddress);
+    
+        int clientSocket =
+            accept(serverSocket,
+                   reinterpret_cast<sockaddr*>(&clientAddress),
+                   &clientLength);
+
+        if (clientSocket == -1)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                break;
+            }
+
+            // actual error
+            std::cerr<< "Accept failed.\n";
+            break;
+        }
+
+        // register client
+    
+        if (!setNonBlocking(clientSocket))
+        {
+            close(clientSocket);
+            continue;
+        }
+    
+        clients.emplace(
+            clientSocket,
+            Client(clientSocket));
+    
+        epoll_event event{};
+    
+        event.events = EPOLLIN;
+        event.data.fd = clientSocket;
+    
+        epoll_ctl(
+            epollFd,
+            EPOLL_CTL_ADD,
+            clientSocket,
+            &event);
+    
+        std::cout << "Client connected.\n";
     }
 
-    setNonBlocking(clientSocket);
-
-    clients.emplace(
-        clientSocket,
-        Client(clientSocket));
-
-    epoll_event event{};
-
-    event.events = EPOLLIN;
-    event.data.fd = clientSocket;
-
-    epoll_ctl(
-        epollFd,
-        EPOLL_CTL_ADD,
-        clientSocket,
-        &event);
-
-    std::cout << "Client connected.\n";
 }
 
 
@@ -275,10 +293,12 @@ void Server::acceptClients()
             }
             else
             {
-                std::cout
-                    << "Client "
-                    << fd
-                    << " has data ready.\n";
+                auto it = clients.find(fd);
+
+                if (it != clients.end())
+                {
+                    handleClient(it->second);
+                }
             }
         }
     }
