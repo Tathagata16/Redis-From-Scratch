@@ -4,13 +4,18 @@
 #include <cstring>
 
 #include "parser.h"
+#include "client.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
-Server::Server(): serverSocket(-1), processor(&database){}
+#include <fcntl.h>
+#include <cerrno>
+#include <sys/epoll.h>
+
+Server::Server(): serverSocket(-1),epollFd(-1), processor(&database){}
 
 
 Server::~Server()
@@ -30,7 +35,44 @@ bool Server::createSocket()
         return false;
     }
 
+    if (!setNonBlocking(serverSocket))
+    {
+        close(serverSocket);
+        return false;
+    }
+
     std::cout<< "Socket created.\n";
+    return true;
+}
+
+//function to create epoll instance
+bool Server::createEpoll()
+{
+    epollFd = epoll_create1(0);
+
+    if (epollFd == -1)
+    {
+        std::cerr << "Failed to create epoll instance.\n";
+        return false;
+    }
+
+    epoll_event event{};
+
+    event.events = EPOLLIN;
+    event.data.fd = serverSocket;
+
+    if (epoll_ctl(
+            epollFd,
+            EPOLL_CTL_ADD,
+            serverSocket,
+            &event) == -1)
+    {
+        std::cerr << "Failed to register server socket.\n";
+        return false;
+    }
+
+    return true;
+
     return true;
 }
 
@@ -66,6 +108,53 @@ bool Server::listenForConnections(){
     return true;
 }
 
+bool Server::setNonBlocking(int socket)
+{
+    int flags = fcntl(socket, F_GETFL, 0);
+
+    if (flags == -1)
+    {
+        std::cerr << "Failed to get socket flags.\n";
+        return false;
+    }
+
+    if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+        std::cerr << "Failed to set socket as non-blocking.\n";
+        return false;
+    }
+
+    return true;
+}
+
+bool Server::createEpoll()
+{
+    epollFd = epoll_create1(0);
+
+    if (epollFd == -1)
+    {
+        std::cerr << "Failed to create epoll instance.\n";
+        return false;
+    }
+
+    epoll_event event{};
+
+    event.events = EPOLLIN;
+    event.data.fd = serverSocket;
+
+    if (epoll_ctl(
+            epollFd,
+            EPOLL_CTL_ADD,
+            serverSocket,
+            &event) == -1)
+    {
+        std::cerr << "Failed to register server socket.\n";
+        return false;
+    }
+
+    return true;
+}
+
 
 void Server::handleClient(Client& client){
     while(true){
@@ -78,7 +167,13 @@ void Server::handleClient(Client& client){
             break;
         }
 
-        if(bytesReceived < 0){
+        if (bytesReceived < 0)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                continue;
+            }
+
             std::cerr << "Receive failed.\n";
             break;
         }
@@ -114,28 +209,78 @@ void Server::handleClient(Client& client){
     close(client.getSocket());
 }
 
+void Server::acceptNewClient()
+{
+    sockaddr_in clientAddress{};
+    socklen_t clientLength = sizeof(clientAddress);
 
-void Server::acceptClients(){
-    while(true){
-        std::cout << "\nwaiting for client...\n";
+    int clientSocket =
+        accept(serverSocket,
+               reinterpret_cast<sockaddr*>(&clientAddress),
+               &clientLength);
 
-        sockaddr_in clientAddress{};
-        socklen_t clientLength = sizeof(clientAddress);
+    if (clientSocket == -1)
+    {
+        return;
+    }
 
-        int clientSocket = accept(
-            serverSocket,
-            reinterpret_cast<sockaddr*>(&clientAddress),
-            &clientLength);
+    setNonBlocking(clientSocket);
 
-        if (clientSocket == -1)
+    clients.emplace(
+        clientSocket,
+        Client(clientSocket));
+
+    epoll_event event{};
+
+    event.events = EPOLLIN;
+    event.data.fd = clientSocket;
+
+    epoll_ctl(
+        epollFd,
+        EPOLL_CTL_ADD,
+        clientSocket,
+        &event);
+
+    std::cout << "Client connected.\n";
+}
+
+
+void Server::acceptClients()
+{
+    constexpr int MAX_EVENTS = 64;
+
+    epoll_event events[MAX_EVENTS];
+
+    while (true)
+    {
+        int ready = epoll_wait(
+            epollFd,
+            events,
+            MAX_EVENTS,
+            -1);
+
+        if (ready == -1)
         {
-            std::cerr << "Accept failed.\n";
+            std::cerr << "epoll_wait failed.\n";
             continue;
         }
 
-        Client client(clientSocket);
+        for (int i = 0; i < ready; i++)
+        {
+            int fd = events[i].data.fd;
 
-        handleClient(client);
+            if (fd == serverSocket)
+            {
+                acceptNewClient();
+            }
+            else
+            {
+                std::cout
+                    << "Client "
+                    << fd
+                    << " has data ready.\n";
+            }
+        }
     }
 }
 
@@ -148,6 +293,8 @@ void Server::start(){
 
     if(!listenForConnections())
         return;
+
+    if(!createEpoll())return;
 
     acceptClients();
 }
