@@ -56,6 +56,9 @@ bool Server::bindSocket()
     serverAddress.sin_port = htons(6379);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
+    int opt = 1;
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
     if(bind(serverSocket,
     reinterpret_cast<sockaddr*>(&serverAddress),sizeof(serverAddress))==-1)
     {
@@ -128,7 +131,7 @@ bool Server::createEpoll()
 }
 
 
-void Server::handleClient(Client& client){
+void Server::handleClient(Client& client){   
         char tempBuffer[1024]{};
 
         ssize_t bytesReceived = recv(client.getSocket(), tempBuffer, sizeof(tempBuffer)-1, 0);
@@ -258,6 +261,7 @@ void Server::acceptNewClient()
             &event);
     
         std::cout << "Client connected.\n";
+        
     }
 
 }
